@@ -259,8 +259,9 @@ void SlamToolbox::publishVisualizations()
   rclcpp::Rate r(1.0 / map_update_interval);
 
   while (rclcpp::ok()) {
-    updateMap();
+    // updateMap(); // Originalment aqui, no ens interesa per republicar topic map amb loc
     if (!isPaused(VISUALIZING_GRAPH)) {
+      updateMap();
       closure_assistant_->publishGraph();
     }
     r.sleep();
