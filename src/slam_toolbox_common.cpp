@@ -260,10 +260,11 @@ void SlamToolbox::publishVisualizations()
 
   while (rclcpp::ok()) {
     if (!isPaused(NEW_MEASUREMENTS)){ // Originalment sense el condicional
-      updateMap(); 
-    }
-    if (!isPaused(VISUALIZING_GRAPH)) {
-      closure_assistant_->publishGraph();
+        updateMap(); 
+      
+      if (!isPaused(VISUALIZING_GRAPH)) {
+        closure_assistant_->publishGraph();
+      }
     }
     r.sleep();
   }
