@@ -226,13 +226,15 @@ void SlamToolbox::publishTransformLoop(
   rclcpp::Rate r(1.0 / transform_publish_period);
   while (rclcpp::ok()) {
     {
-      boost::mutex::scoped_lock lock(map_to_odom_mutex_);
-      geometry_msgs::msg::TransformStamped msg;
-      msg.transform = tf2::toMsg(map_to_odom_);
-      msg.child_frame_id = odom_frame_;
-      msg.header.frame_id = map_frame_;
-      msg.header.stamp = scan_timestamped + transform_timeout_;
-      tfB_->sendTransform(msg);
+      if (!isPaused(NEW_MEASUREMENTS)){ // Originalment sense el condicional
+        boost::mutex::scoped_lock lock(map_to_odom_mutex_);
+        geometry_msgs::msg::TransformStamped msg;
+        msg.transform = tf2::toMsg(map_to_odom_);
+        msg.child_frame_id = odom_frame_;
+        msg.header.frame_id = map_frame_;
+        msg.header.stamp = scan_timestamped + transform_timeout_;
+        tfB_->sendTransform(msg);
+      }
     }
     r.sleep();
   }
@@ -569,7 +571,7 @@ LocalizedRangeScan * SlamToolbox::addScan(
 
   // if successfully processed, create odom to map transformation
   // and add our scan to storage
-  if (processed) {
+  if (processed && !isPaused(NEW_MEASUREMENTS)) { // TODO: Introduit el && isPaused, serveix?
     if (enable_interactive_mode_) {
       scan_holder_->addScan(*scan);
     }
