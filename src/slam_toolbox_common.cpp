@@ -571,7 +571,7 @@ LocalizedRangeScan * SlamToolbox::addScan(
 
   // if successfully processed, create odom to map transformation
   // and add our scan to storage
-  if (processed && !isPaused(NEW_MEASUREMENTS)) { // TODO: Introduit el && isPaused, serveix?
+  if (processed && !isPaused(NEW_MEASUREMENTS)) { 
     if (enable_interactive_mode_) {
       scan_holder_->addScan(*scan);
     }
