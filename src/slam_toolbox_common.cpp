@@ -78,6 +78,11 @@ void SlamToolbox::configure()
       this, transform_publish_period)));
   threads_.push_back(std::make_unique<boost::thread>(
       boost::bind(&SlamToolbox::publishVisualizations, this)));
+  threads_.push_back(std::make_unique<boost::thread>(
+      boost::bind(&SlamToolbox::heartbeat, this)));
+
+  // Heartbeat publisher
+
 }
 
 /*****************************************************************************/
@@ -96,6 +101,17 @@ SlamToolbox::~SlamToolbox()
   laser_assistant_.reset();
   scan_holder_.reset();
   solver_.reset();
+}
+
+/*****************************************************************************/
+void SlamToolbox::heartbeat()
+/*****************************************************************************/
+{
+  while (rclcpp::ok()) {
+    std_msgs::msg::Empty tmp;
+    heartbeat_pub_->publish(tmp);
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
+  }
 }
 
 /*****************************************************************************/
@@ -187,6 +203,8 @@ void SlamToolbox::setROSInterfaces()
   sstm_ = this->create_publisher<nav_msgs::msg::MapMetaData>(
     map_name_ + "_metadata",
     rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+  heartbeat_pub_ = this->create_publisher<std_msgs::msg::Empty>(
+    "slam_toolbox/heartbeat", 10);
   ssMap_ = this->create_service<nav_msgs::srv::GetMap>("slam_toolbox/dynamic_map",
       std::bind(&SlamToolbox::mapCallback, this, std::placeholders::_1,
       std::placeholders::_2, std::placeholders::_3));
