@@ -180,7 +180,7 @@ void SlamToolbox::setParams()
 
   smapper_->configure(shared_from_this());
   this->declare_parameter("paused_new_measurements");
-  this->set_parameter({"paused_new_measurements", false});
+  this->set_parameter({"paused_new_measurements", isPaused(NEW_MEASUREMENTS)});
 }
 
 /*****************************************************************************/
