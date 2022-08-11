@@ -31,11 +31,11 @@ LocalizationSlamToolbox::LocalizationSlamToolbox(rclcpp::NodeOptions options)
   processor_type_ = PROCESS_LOCALIZATION;
   localization_pose_sub_ =
     this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "/initialpose", 1,
+    "initialpose", 1,
     std::bind(&LocalizationSlamToolbox::localizePoseCallback,
     this, std::placeholders::_1));
   clear_localization_ = this->create_service<std_srvs::srv::Empty>(
-    "/slam_toolbox/clear_localization_buffer",
+    "slam_toolbox/clear_localization_buffer",
     std::bind(&LocalizationSlamToolbox::clearLocalizationBuffer, this,
     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
@@ -118,8 +118,8 @@ void LocalizationSlamToolbox::laserCallback(
   sensor_msgs::msg::LaserScan::ConstSharedPtr scan)
 /*****************************************************************************/
 {
-  // store scan timestamped
-  scan_timestamped = scan->header.stamp;
+  // store scan header
+  scan_header = scan->header;
   // no odom info
   Pose2 pose;
   if (!pose_helper_->getOdomPose(pose, scan->header.stamp)) {
@@ -160,6 +160,10 @@ LocalizedRangeScan * LocalizationSlamToolbox::addScan(
   // Add the localized range scan to the smapper
   boost::mutex::scoped_lock lock(smapper_mutex_);
   bool processed = false, update_reprocessing_transform = false;
+
+  Matrix3 covariance;
+  covariance.SetToIdentity();
+
   if (processor_type_ == PROCESS_NEAR_REGION) {
     if (!process_near_pose_) {
       RCLCPP_ERROR(get_logger(),
@@ -172,13 +176,13 @@ LocalizedRangeScan * LocalizationSlamToolbox::addScan(
     range_scan->SetOdometricPose(*process_near_pose_);
     range_scan->SetCorrectedPose(range_scan->GetOdometricPose());
     process_near_pose_.reset(nullptr);
-    processed = smapper_->getMapper()->ProcessAgainstNodesNearBy(range_scan, true);
+    processed = smapper_->getMapper()->ProcessAgainstNodesNearBy(range_scan, true, &covariance);
 
     // reset to localization mode
     update_reprocessing_transform = true;
     processor_type_ = PROCESS_LOCALIZATION;
   } else if (processor_type_ == PROCESS_LOCALIZATION) {
-    processed = smapper_->getMapper()->ProcessLocalization(range_scan);
+    processed = smapper_->getMapper()->ProcessLocalization(range_scan, &covariance);
     update_reprocessing_transform = false;
   } else {
     RCLCPP_FATAL(get_logger(), "LocalizationSlamToolbox: "
@@ -194,6 +198,8 @@ LocalizedRangeScan * LocalizationSlamToolbox::addScan(
     // compute our new transform
     setTransformFromPoses(range_scan->GetCorrectedPose(), odom_pose,
       scan->header.stamp, update_reprocessing_transform);
+
+    publishPose(range_scan->GetCorrectedPose(), covariance, scan->header.stamp);
   }
 
   return range_scan;
