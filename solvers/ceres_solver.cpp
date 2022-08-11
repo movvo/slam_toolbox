@@ -145,6 +145,10 @@ void CeresSolver::Configure(rclcpp::Node::SharedPtr node)
     options_problem_.enable_fast_removal = true;
   }
 
+  // we do not want the problem definition to own these objects, otherwise they get
+  // deleted along with the problem 
+  options_problem_.loss_function_ownership = ceres::Ownership::DO_NOT_TAKE_OWNERSHIP;
+
   problem_ = new ceres::Problem(options_problem_);
 }
 
@@ -157,6 +161,9 @@ CeresSolver::~CeresSolver()
   }
   if (nodes_ != NULL) {
     delete nodes_;
+  }
+  if (blocks_ != NULL) {
+    delete blocks_;
   }
   if (problem_ != NULL) {
     delete problem_;
@@ -177,7 +184,10 @@ void CeresSolver::Compute()
   }
 
   // populate contraint for static initial pose
-  if (!was_constant_set_ && first_node_ != nodes_->end()) {
+  if (!was_constant_set_ && first_node_ != nodes_->end() &&
+      problem_->HasParameterBlock(&first_node_->second(0)) &&
+      problem_->HasParameterBlock(&first_node_->second(1)) &&
+      problem_->HasParameterBlock(&first_node_->second(2))) {
     RCLCPP_DEBUG(node_->get_logger(),
       "CeresSolver: Setting first node as a constant pose:"
       "%0.2f, %0.2f, %0.2f.", first_node_->second(0),
@@ -239,6 +249,8 @@ void CeresSolver::Reset()
   was_constant_set_ = false;
 
   if (problem_) {
+    // Note that this also frees anything the problem owns (i.e. local parameterization, cost
+    // function)
     delete problem_;
   }
 
@@ -310,13 +322,14 @@ void CeresSolver::AddConstraint(karto::Edge<karto::LocalizedRangeScan> * pEdge)
   Eigen::Vector3d pose2d(diff.GetX(), diff.GetY(), diff.GetHeading());
 
   karto::Matrix3 precisionMatrix = pLinkInfo->GetCovariance().Inverse();
-  Eigen::Matrix3d sqrt_information;
-  sqrt_information(0, 0) = precisionMatrix(0, 0);
-  sqrt_information(0, 1) = sqrt_information(1, 0) = precisionMatrix(0, 1);
-  sqrt_information(0, 2) = sqrt_information(2, 0) = precisionMatrix(0, 2);
-  sqrt_information(1, 1) = precisionMatrix(1, 1);
-  sqrt_information(1, 2) = sqrt_information(2, 1) = precisionMatrix(1, 2);
-  sqrt_information(2, 2) = precisionMatrix(2, 2);
+  Eigen::Matrix3d information;
+  information(0, 0) = precisionMatrix(0, 0);
+  information(0, 1) = information(1, 0) = precisionMatrix(0, 1);
+  information(0, 2) = information(2, 0) = precisionMatrix(0, 2);
+  information(1, 1) = precisionMatrix(1, 1);
+  information(1, 2) = information(2, 1) = precisionMatrix(1, 2);
+  information(2, 2) = precisionMatrix(2, 2);
+  Eigen::Matrix3d sqrt_information = information.llt().matrixU();
 
   // populate residual and parameterization for heading normalization
   ceres::CostFunction * cost_function = PoseGraph2dErrorTerm::Create(pose2d(0),

@@ -43,7 +43,7 @@ For running on live production robots, I recommend using the snap: slam-toolbox,
 
 This package has been benchmarked mapping building at 5x+ realtime up to about 30,000 sqft and 3x realtime up to about 60,000 sqft. with the largest area (I'm aware of) used was a 200,000 sq.ft. building in synchronous mode (e.i. processing all scans, regardless of lag), and *much* larger spaces in asynchronous mode. 
 
-The video below was collected at [Circuit Launch](https://www.circuitlaunch.com/) in Oakland, California. Thanks to [Silicon Valley Robotics](https://svrobo.org/) & Circuit Launch for being a testbed for some of this work. This data is currently available upon request, but its going to be included in a larger open-source dataset down the line. 
+The video below was collected at [Circuit Launch](https://www.circuitlaunch.com/) in Oakland, California. Thanks to [Silicon Valley Robotics](https://svrobo.org/) & Circuit Launch for being a testbed for some of this work.
 
 ![map_image](/images/circuit_launch.gif?raw=true "Map Image")
 
@@ -174,8 +174,10 @@ The following are the services/topics that are exposed for use. See the rviz plu
 
 ## Published topics
 
-| map  | `nav_msgs/OccupancyGrid` | occupancy grid representation of the pose-graph at `map_update_interval` frequency | 
+| Topic  | Type | Description | 
 |-----|----|----|
+| map  | `nav_msgs/OccupancyGrid` | occupancy grid representation of the pose-graph at `map_update_interval` frequency | 
+| pose | `geometry_msgs/PoseWithCovarianceStamped` | pose of the base_frame in the configured map_frame along with the covariance calculated from the scan match |
 
 ## Exposed Services
 
@@ -235,6 +237,10 @@ The following settings and options are exposed to you. My default configuration 
 `map_update_interval` - Interval to update the 2D occupancy map for other applications / visualization
 
 `enable_interactive_mode` - Whether or not to allow for interactive mode to be enabled. Interactive mode will retain a cache of laser scans mapped to their ID for visualization in interactive mode. As a result the memory for the process will increase. This is manually disabled in localization and lifelong modes since they would increase the memory utilization over time. Valid for either mapping or continued mapping modes.
+
+`position_covariance_scale` - Amount to scale position covariance when publishing pose from scan match.  This can be used to tune the influence of the pose position in a downstream localization filter.  The covariance represents the uncertainty of the measurement, so scaling up the covariance will result in the pose position having less influence on downstream filters.  Default: 1.0
+
+`yaw_covariance_scale` - Amount to scale yaw covariance when publishing pose from scan match.  See description of position_covariance_scale.  Default: 1.0
 
 `resolution` - Resolution of the 2D occupancy map to generate
 
