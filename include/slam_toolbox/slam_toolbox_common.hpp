@@ -21,6 +21,8 @@
 
 #include <sys/resource.h>
 #include <boost/thread.hpp>
+#include <boost/chrono.hpp>
+
 #include <string>
 #include <map>
 #include <vector>
@@ -38,6 +40,7 @@
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "tf2_sensor_msgs/tf2_sensor_msgs.h"
+#include "std_msgs/msg/empty.hpp"
 
 #include "pluginlib/class_loader.hpp"
 
@@ -69,6 +72,7 @@ protected:
   // threads
   void publishVisualizations();
   void publishTransformLoop(const double & transform_publish_period);
+  void heartbeat();
 
   // setup
   void setParams();
@@ -130,6 +134,7 @@ protected:
   std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>> scan_filter_;
   std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>> sst_;
   std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::MapMetaData>> sstm_;
+  std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Empty>> heartbeat_pub_;
   std::shared_ptr<rclcpp::Service<nav_msgs::srv::GetMap>> ssMap_;
   std::shared_ptr<rclcpp::Service<slam_toolbox::srv::Pause>> ssPauseMeasurements_;
   std::shared_ptr<rclcpp::Service<slam_toolbox::srv::SerializePoseGraph>> ssSerialize_;

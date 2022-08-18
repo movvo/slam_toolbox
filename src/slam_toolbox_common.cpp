@@ -41,7 +41,7 @@ SlamToolbox::SlamToolbox(rclcpp::NodeOptions options)
   first_measurement_(true),
   process_near_pose_(nullptr),
   transform_timeout_(rclcpp::Duration::from_seconds(0.5)),
-  minimum_time_interval_(std::chrono::nanoseconds(0))
+  minimum_time_interval_(0.)
 /*****************************************************************************/
 {
   smapper_ = std::make_unique<mapper_utils::SMapper>();
@@ -78,6 +78,11 @@ void SlamToolbox::configure()
       this, transform_publish_period)));
   threads_.push_back(std::make_unique<boost::thread>(
       boost::bind(&SlamToolbox::publishVisualizations, this)));
+  threads_.push_back(std::make_unique<boost::thread>(
+      boost::bind(&SlamToolbox::heartbeat, this)));
+
+  // Heartbeat publisher
+
 }
 
 /*****************************************************************************/
@@ -96,6 +101,17 @@ SlamToolbox::~SlamToolbox()
   laser_assistant_.reset();
   scan_holder_.reset();
   solver_.reset();
+}
+
+/*****************************************************************************/
+void SlamToolbox::heartbeat()
+/*****************************************************************************/
+{
+  while (rclcpp::ok()) {
+    std_msgs::msg::Empty tmp;
+    heartbeat_pub_->publish(tmp);
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
+  }
 }
 
 /*****************************************************************************/
@@ -164,7 +180,7 @@ void SlamToolbox::setParams()
 
   smapper_->configure(shared_from_this());
   this->declare_parameter("paused_new_measurements");
-  this->set_parameter({"paused_new_measurements", false});
+  this->set_parameter({"paused_new_measurements", isPaused(NEW_MEASUREMENTS)});
 }
 
 /*****************************************************************************/
@@ -187,16 +203,18 @@ void SlamToolbox::setROSInterfaces()
   sstm_ = this->create_publisher<nav_msgs::msg::MapMetaData>(
     map_name_ + "_metadata",
     rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
-  ssMap_ = this->create_service<nav_msgs::srv::GetMap>("/slam_toolbox/dynamic_map",
+  heartbeat_pub_ = this->create_publisher<std_msgs::msg::Empty>(
+    "slam_toolbox/heartbeat", 10);
+  ssMap_ = this->create_service<nav_msgs::srv::GetMap>("slam_toolbox/dynamic_map",
       std::bind(&SlamToolbox::mapCallback, this, std::placeholders::_1,
       std::placeholders::_2, std::placeholders::_3));
   ssPauseMeasurements_ = this->create_service<slam_toolbox::srv::Pause>(
-    "/slam_toolbox/pause_new_measurements",
+    "slam_toolbox/pause_new_measurements",
     std::bind(&SlamToolbox::pauseNewMeasurementsCallback,
     this, std::placeholders::_1,
     std::placeholders::_2, std::placeholders::_3));
   ssSerialize_ = this->create_service<slam_toolbox::srv::SerializePoseGraph>(
-    "/slam_toolbox/serialize_map",
+    "slam_toolbox/serialize_map",
     std::bind(&SlamToolbox::serializePoseGraphCallback, this,
     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
   ssDesserialize_ = this->create_service<slam_toolbox::srv::DeserializePoseGraph>(
@@ -571,7 +589,7 @@ LocalizedRangeScan * SlamToolbox::addScan(
 
   // if successfully processed, create odom to map transformation
   // and add our scan to storage
-  if (processed && !isPaused(NEW_MEASUREMENTS)) { 
+  if (processed) { 
     if (enable_interactive_mode_) {
       scan_holder_->addScan(*scan);
     }
