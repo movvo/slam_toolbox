@@ -94,7 +94,7 @@ struct PausedState
 {
   PausedState()
   {
-    state_map_[NEW_MEASUREMENTS] = false;
+    state_map_[NEW_MEASUREMENTS] = true;
     state_map_[VISUALIZING_GRAPH] = false;
     state_map_[PROCESSING] = false;
   }
