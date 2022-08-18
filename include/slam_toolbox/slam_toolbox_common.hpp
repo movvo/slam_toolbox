@@ -38,8 +38,8 @@
 #include "tf2_ros/create_timer_ros.h"
 #include "tf2_ros/message_filter.h"
 #include "tf2/LinearMath/Matrix3x3.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
-#include "tf2_sensor_msgs/tf2_sensor_msgs.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2_sensor_msgs/tf2_sensor_msgs.hpp"
 #include "std_msgs/msg/empty.hpp"
 
 #include "pluginlib/class_loader.hpp"
@@ -64,8 +64,8 @@ class SlamToolbox : public rclcpp::Node
 public:
   explicit SlamToolbox(rclcpp::NodeOptions);
   SlamToolbox();
-  ~SlamToolbox();
-  void configure();
+  virtual ~SlamToolbox();
+  virtual void configure();
   virtual void loadPoseGraphByParams();
 
 protected:
@@ -118,6 +118,10 @@ protected:
   bool shouldProcessScan(
     const sensor_msgs::msg::LaserScan::ConstSharedPtr & scan,
     const karto::Pose2 & pose);
+  void publishPose(
+    const Pose2 & pose,
+    const Matrix3 & cov,
+    const rclcpp::Time & t);
 
   // pausing bits
   bool isPaused(const PausedApplication & app);
@@ -135,6 +139,7 @@ protected:
   std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>> sst_;
   std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::MapMetaData>> sstm_;
   std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Empty>> heartbeat_pub_;
+  std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>> pose_pub_;
   std::shared_ptr<rclcpp::Service<nav_msgs::srv::GetMap>> ssMap_;
   std::shared_ptr<rclcpp::Service<slam_toolbox::srv::Pause>> ssPauseMeasurements_;
   std::shared_ptr<rclcpp::Service<slam_toolbox::srv::SerializePoseGraph>> ssSerialize_;
@@ -143,10 +148,12 @@ protected:
   // Storage for ROS parameters
   std::string odom_frame_, map_frame_, base_frame_, map_name_, scan_topic_;
   rclcpp::Duration transform_timeout_, minimum_time_interval_;
-  rclcpp::Time scan_timestamped;
+  std_msgs::msg::Header scan_header;
   int throttle_scans_;
 
   double resolution_;
+  double position_covariance_scale_;
+  double yaw_covariance_scale_;
   bool first_measurement_, enable_interactive_mode_;
 
   // Book keeping
