@@ -842,11 +842,18 @@ void SlamToolbox::StopSlam()
 {
   is_running_.store(false);
 
-  for (auto& thread : threads_) {
-    if (thread->joinable()) {
-      thread->join();
-    }
+  for (int i = 0; i != threads_.size(); i++) {
+    threads_[i]->join();
   }
+
+  smapper_.reset();
+  dataset_.reset();
+  closure_assistant_.reset();
+  map_saver_.reset();
+  pose_helper_.reset();
+  laser_assistant_.reset();
+  scan_holder_.reset();
+  solver_.reset();
 }
 /*****************************************************************************/
 
