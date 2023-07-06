@@ -52,6 +52,8 @@ SlamToolbox::SlamToolbox(rclcpp::NodeOptions options)
 void SlamToolbox::configure()
 /*****************************************************************************/
 {
+  is_running_.store(true);
+
   setParams();
   setROSInterfaces();
   setSolver();
@@ -246,7 +248,7 @@ void SlamToolbox::publishTransformLoop(
   }
 
   rclcpp::Rate r(1.0 / transform_publish_period);
-  while (rclcpp::ok()) {
+  while (rclcpp::ok() && is_running_.load()) {
     {
       boost::mutex::scoped_lock lock(map_to_odom_mutex_);
       rclcpp::Time scan_timestamp = scan_header.stamp;
@@ -284,7 +286,7 @@ void SlamToolbox::publishVisualizations()
       map_update_interval);
   rclcpp::Rate r(1.0 / map_update_interval);
 
-  while (rclcpp::ok()) {
+  while (rclcpp::ok() && is_running_.load()) {
     updateMap();
     if (!isPaused(VISUALIZING_GRAPH)) {
       boost::mutex::scoped_lock lock(smapper_mutex_);
@@ -834,5 +836,18 @@ bool SlamToolbox::deserializePoseGraphCallback(
 
   return true;
 }
+
+/*****************************************************************************/
+void SlamToolbox::StopSlam()
+{
+  is_running_.store(false);
+
+  for (auto& thread : threads_) {
+    if (thread->joinable()) {
+      thread->join();
+    }
+  }
+}
+/*****************************************************************************/
 
 }  // namespace slam_toolbox

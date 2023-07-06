@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <memory>
 #include <fstream>
+#include <atomic>
 
 #include "rclcpp/rclcpp.hpp"
 #include "message_filters/subscriber.h"
@@ -64,6 +65,7 @@ public:
   virtual ~SlamToolbox();
   virtual void configure();
   virtual void loadPoseGraphByParams();
+  virtual void StopSlam();
 
 protected:
   // threads
@@ -150,6 +152,7 @@ protected:
   double position_covariance_scale_;
   double yaw_covariance_scale_;
   bool first_measurement_, enable_interactive_mode_;
+  std::atomic<bool> is_running_;
 
   // Book keeping
   std::unique_ptr<mapper_utils::SMapper> smapper_;
